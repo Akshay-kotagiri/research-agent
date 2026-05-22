@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -6,8 +6,78 @@ on:
   pull_request:
     branches: ["**"]
 
+permissions:
+  contents: write        # allow Claude Code to commit auto-fixes
+  pull-requests: write   # allow Claude Code to post PR review comments
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Flake8 — code quality
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Flake8 Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Flake8
+        run: pip install flake8
+
+      - name: Run Flake8
+        run: |
+          flake8 src/ tests/ \
+            --max-line-length=100 \
+            --extend-ignore=E501,W503 \
+            --exclude=__pycache__,.venv
+
+  # ---------------------------------------------------------------------------
+  # 2. Bandit — security scanning
+  # ---------------------------------------------------------------------------
+  security:
+    name: Bandit Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit
+        run: |
+          bandit -r src/ \
+            --severity-level medium \
+            --confidence-level medium \
+            --format json \
+            --output bandit-report.json || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
+  # ---------------------------------------------------------------------------
+  # 3. Pytest — tests + HTML report, auto-fix on failure
+  # ---------------------------------------------------------------------------
   test:
+    name: Pytest + HTML Report
     runs-on: ubuntu-latest
 
     steps:
@@ -21,10 +91,75 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest-html
 
       - name: Run tests
+        id: run-tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: pytest tests/ -v
+        run: |
+          pytest tests/ -v \
+            --html=test-report.html \
+            --self-contained-html \
+            --tb=short \
+            2>&1 | tee pytest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload HTML test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report
+          path: test-report.html
+
+      - name: Auto-fix failing tests with Claude Code
+        if: failure() && steps.run-tests.outcome == 'failure'
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          allowed_tools: "Bash,Read,Edit,Write,Glob,Grep"
+          prompt: |
+            The pytest test suite is failing. Here is the output:
+
+            $(cat pytest-output.txt)
+
+            Your task:
+            1. Run `pytest tests/ -v --tb=long` to see full failure details
+            2. Read the relevant source files in src/ to understand the bug
+            3. Fix the bug(s) in src/ — do NOT modify any files in tests/
+            4. Run pytest again to confirm all tests pass
+            5. Commit the fix with message: "fix: auto-fix failing tests [claude-code]"
+            6. Push the commit
+
+  # ---------------------------------------------------------------------------
+  # 4. Claude Code — automatic code review on every push and PR
+  # ---------------------------------------------------------------------------
+  code-review:
+    name: Claude Code Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so Claude can see the diff
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          allowed_tools: "Bash,Read,Glob,Grep"
+          prompt: |
+            Review the latest code changes in this repository. Focus on:
+
+            1. **Correctness** — logic errors, off-by-one bugs, unhandled edge cases
+            2. **Security** — hardcoded secrets, injection risks, insecure API usage
+            3. **Code quality** — readability, naming, unnecessary complexity
+            4. **Test coverage** — are the changes adequately tested?
+            5. **LangGraph / MCP patterns** — correct async usage, proper state handling
+
+            Run `git diff HEAD~1` to see what changed.
+            Provide a concise, actionable review. Flag any blocking issues clearly.
