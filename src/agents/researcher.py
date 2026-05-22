@@ -12,6 +12,7 @@ from src.state import ResearchState
 
 _llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
+
 _SYSTEM = """You are a research agent with access to web search and page fetching tools.
 Answer the sub-questions in the plan as thoroughly as possible. Use web_search to find
 relevant sources, then fetch_page to read them in detail. Cite sources with URLs."""
