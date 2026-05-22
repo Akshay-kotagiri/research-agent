@@ -30,7 +30,6 @@ def build_graph() -> StateGraph:
     return graph.compile()
 
 
-# Module-level compiled graph — import and invoke directly
 research_graph = build_graph()
 
 
@@ -38,9 +37,11 @@ if __name__ == "__main__":
     import asyncio
 
     async def main() -> None:
-        query = "What are the latest breakthroughs in quantum computing?"
-        initial_state = ResearchState(query=query)
-        result = await research_graph.ainvoke(initial_state)
-        print(result["final_report"])
+        query = input("Enter your research question: ")
+        result = await research_graph.ainvoke(ResearchState(query=query))
+        print("\n" + "="*60)
+        print("FINAL REPORT")
+        print("="*60)
+        print(result.get("final_report", "No report generated"))
 
     asyncio.run(main())
