@@ -7,8 +7,8 @@ on:
     branches: ["**"]
 
 permissions:
-  contents: write        # allow Claude Code to commit auto-fixes
-  pull-requests: write   # allow Claude Code to post PR review comments
+  contents: write        # allow auto-fix step to commit changes
+  pull-requests: write   # allow review step to post PR comments
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -134,32 +134,63 @@ jobs:
             6. Push the commit
 
   # ---------------------------------------------------------------------------
-  # 4. Claude Code — automatic code review on every push and PR
+  # 4. OpenAI Code Review — runs on every push and PR
   # ---------------------------------------------------------------------------
   code-review:
-    name: Claude Code Review
+    name: OpenAI Code Review
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history so Claude can see the diff
+          fetch-depth: 0
 
-      - name: Claude Code Review
-        uses: anthropics/claude-code-action@beta
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-6
-          allowed_tools: "Bash,Read,Glob,Grep"
-          prompt: |
-            Review the latest code changes in this repository. Focus on:
+          python-version: "3.11"
+          cache: "pip"
 
-            1. **Correctness** — logic errors, off-by-one bugs, unhandled edge cases
-            2. **Security** — hardcoded secrets, injection risks, insecure API usage
-            3. **Code quality** — readability, naming, unnecessary complexity
-            4. **Test coverage** — are the changes adequately tested?
-            5. **LangGraph / MCP patterns** — correct async usage, proper state handling
+      - name: Install OpenAI SDK
+        run: pip install openai
 
-            Run `git diff HEAD~1` to see what changed.
-            Provide a concise, actionable review. Flag any blocking issues clearly.
+      - name: Run OpenAI code review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          git diff HEAD~1 -- '*.py' | head -c 12000 > /tmp/diff.txt
+
+          python - <<'PYEOF'
+          import sys
+          from openai import OpenAI
+
+          with open("/tmp/diff.txt") as f:
+              diff = f.read()
+
+          if not diff.strip():
+              print("No Python changes detected — skipping review.")
+              sys.exit(0)
+
+          client = OpenAI()
+          response = client.chat.completions.create(
+              model="gpt-4o",
+              messages=[
+                  {
+                      "role": "system",
+                      "content": (
+                          "You are a senior Python code reviewer. "
+                          "Review the git diff and give concise, actionable feedback. "
+                          "Focus on: correctness, security, code quality, and test coverage. "
+                          "Flag blocking issues with [BLOCKING]. "
+                          "Keep the review under 400 words."
+                      ),
+                  },
+                  {
+                      "role": "user",
+                      "content": f"Review this git diff:\n\n```diff\n{diff}\n```",
+                  },
+              ],
+          )
+          print(response.choices[0].message.content)
+          PYEOF
