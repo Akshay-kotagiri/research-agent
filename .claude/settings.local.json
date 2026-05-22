@@ -5,7 +5,19 @@
       "Bash(pip install *)",
       "Bash(python -m src.graph)",
       "Bash(python -c ' *)",
-      "Bash(python -m pytest tests/test_agents.py -v)"
+      "Bash(python -m pytest tests/test_agents.py -v)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\User\\\\research-agent\\\\.github\\\\workflows\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"done\")",
+      "PowerShell(New-Item *)",
+      "Bash(python -m streamlit run app.py)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(flake8 src/ tests/ --max-line-length=100 --extend-ignore=E501,W503 --exclude=__pycache__,.venv)",
+      "Bash(python -m flake8 src/ tests/ --max-line-length=100 --extend-ignore=E501,W503 --exclude=__pycache__,.venv)",
+      "Bash(python scripts/auto_push.py --help)",
+      "Bash(python -m flake8 src/agents/planner.py --max-line-length=100 --extend-ignore=E501,W503)"
     ]
   }
 }

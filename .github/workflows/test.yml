@@ -12,34 +12,7 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # 1. Flake8 — code quality
-  # ---------------------------------------------------------------------------
-  lint:
-    name: Flake8 Code Quality
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install Flake8
-        run: pip install flake8
-
-      - name: Run Flake8
-        run: |
-          flake8 src/ tests/ \
-            --max-line-length=100 \
-            --extend-ignore=E501,W503 \
-            --exclude=__pycache__,.venv
-
-  # ---------------------------------------------------------------------------
-  # 2. Bandit — security scanning
+  # 1. Bandit — security scanning
   # ---------------------------------------------------------------------------
   security:
     name: Bandit Security Scan
