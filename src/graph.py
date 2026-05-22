@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END  # noqa: E402
 
-from src.state import ResearchState
-from src.agents import planner_agent, researcher_agent, writer_agent
+from src.state import ResearchState  # noqa: E402
+from src.agents import planner_agent, researcher_agent, writer_agent  # noqa: E402
 
 
 def _route(state: ResearchState) -> str:

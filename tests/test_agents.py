@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from langchain_core.messages import AIMessage
 
@@ -43,7 +42,7 @@ def test_planner_breaks_query_into_at_least_3_subtasks():
         result = planner_agent(state)
 
     plan = result["findings"]["plan"]
-    numbered = [l for l in plan.splitlines() if l.strip() and l.strip()[0].isdigit()]
+    numbered = [line for line in plan.splitlines() if line.strip() and line.strip()[0].isdigit()]
     assert len(numbered) >= 3, f"Expected ≥3 sub-tasks, got {len(numbered)}: {numbered}"
     assert result["next_agent"] == "researcher"
     assert "messages" in result

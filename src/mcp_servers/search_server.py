@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import os
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
-import httpx
+from mcp.server import Server  # noqa: E402
+from mcp.server.stdio import stdio_server  # noqa: E402
+from mcp.types import Tool, TextContent  # noqa: E402
+import httpx  # noqa: E402
 
 app = Server("search-server")
 
