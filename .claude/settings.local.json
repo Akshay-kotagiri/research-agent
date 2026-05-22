@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\User\\\\research-agent\" -ErrorAction SilentlyContinue; if \\(-not \\(Test-Path \"C:\\\\Users\\\\User\\\\research-agent\"\\)\\) { Write-Host \"Directory does not exist\" })",
+      "Bash(pip install *)",
+      "Bash(python -m src.graph)",
+      "Bash(python -c ' *)",
+      "Bash(python -m pytest tests/test_agents.py -v)"
+    ]
+  }
+}
